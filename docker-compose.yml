@@ -1,0 +1,66 @@
+version: "3.9"
+
+services:
+  auth-service:
+    build: ./auth-service
+    ports:
+      - "4000:4000"
+    env_file:
+      - ./auth-service/.env
+    depends_on:
+      - auth-db
+
+  auth-db:
+    image: mongo:4.4
+    container_name: auth-db
+    volumes:
+      - auth-db-data:/data/db
+
+  product-service:
+    build: ./product-service
+    ports:
+      - "5000:5000"
+    env_file:
+      - ./product-service/.env
+    depends_on:
+      - product-db
+
+  product-db:
+    image: mongo:4.4
+    container_name: product-db
+    volumes:
+      - product-db-data:/data/db
+
+  cart-service:
+    build: ./cart-service
+    ports:
+      - "6001:6001"
+    env_file:
+      - ./cart-service/.env
+    depends_on:
+      - cart-redis
+
+  cart-redis:
+    image: redis:7
+    container_name: cart-redis
+
+  order-service:
+    build: ./order-service
+    ports:
+      - "7000:7000"
+    env_file:
+      - ./order-service/.env
+    depends_on:
+      - order-db
+
+  order-db:
+    image: mongo:4.4
+    container_name: order-db
+    volumes:
+      - order-db-data:/data/db
+
+volumes:
+  auth-db-data:
+  product-db-data:
+  order-db-data:
+  
