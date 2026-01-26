@@ -21,10 +21,12 @@ pipeline {
 
     stage('Install Dependencies') {
       steps {
-        sh 'npm ci'
+        dir('auth-service') {
+          sh 'npm ci'
+        }
       }
     }
-
+      
     stage('Static Code Analysis - SonarQube') {
       environment {
         SONAR_TOKEN = credentials('sonarqube-token')
@@ -50,22 +52,26 @@ pipeline {
 
     stage('Build Application') {
       steps {
-        sh 'npm run build || echo "No build step for backend"'
+        dir('auth-service') {
+          sh 'npm run build  || echo "No build step for backend"'
+        }
       }
     }
 
     stage('Docker Build') {
       steps {
-        script {
-          def commitHash = sh(
-            script: 'git rev-parse --short HEAD',
-            returnStdout: true
-          ).trim()
-
-          sh """
-            docker build -t $IMAGE_NAME:${commitHash} .
-            docker tag $IMAGE_NAME:${commitHash} $IMAGE_NAME:latest
-          """
+        dir('auth-service'){
+          script {
+            def commitHash = sh(
+              script: 'git rev-parse --short HEAD',
+              returnStdout: true
+            ).trim()
+  
+            sh """
+              docker build -t $IMAGE_NAME:${commitHash} .
+              docker tag $IMAGE_NAME:${commitHash} $IMAGE_NAME:latest
+            """
+          }
         }
       }
     }
