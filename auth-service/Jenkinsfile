@@ -28,17 +28,17 @@ pipeline {
     }
       
     stage('Static Code Analysis - SonarQube') {
-      environment {
-        SONAR_TOKEN = credentials('sonarqube-token')
-      }
       steps {
-        sh """
-          sonar-scanner \
-          -Dsonar.projectKey=auth-service \
-          -Dsonar.sources=. \
-          -Dsonar.host.url=$SONAR_HOST_URL \
-          -Dsonar.login=$SONAR_TOKEN
-        """
+        dir('auth-service') {
+          withSonarQubeEnv('sonarqube') {
+            sh """
+              sonar-scanner \
+              -Dsonar.projectKey=auth-service \
+              -Dsonar.sources=. \
+              -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
+            """
+          }
+        }
       }
     }
 
@@ -66,7 +66,7 @@ pipeline {
               script: 'git rev-parse --short HEAD',
               returnStdout: true
             ).trim()
-  
+
             sh """
               docker build -t $IMAGE_NAME:${commitHash} .
               docker tag $IMAGE_NAME:${commitHash} $IMAGE_NAME:latest
