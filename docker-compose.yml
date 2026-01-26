@@ -59,6 +59,16 @@ services:
     volumes:
       - order-db-data:/data/db
 
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - auth-service
+      - product-service
+      - cart-service
+      - order-service
+
 volumes:
   auth-db-data:
   product-db-data:

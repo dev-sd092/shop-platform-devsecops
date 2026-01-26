@@ -1,0 +1,102 @@
+pipeline {
+  agent any
+
+  tools {
+    nodejs 'node-20'
+  }
+
+  environment {
+    REGISTRY = 'docker.io'
+    IMAGE_NAME = 'sanketdesai09/auth-service'
+    SONAR_HOST_URL = 'http://localhost:9000'
+  }
+
+  stages {
+
+    stage('Checkout') {
+      steps {
+        checkout scm
+      }
+    }
+
+    stage('Install Dependencies') {
+      steps {
+        sh 'npm ci'
+      }
+    }
+
+    stage('Static Code Analysis - SonarQube') {
+      environment {
+        SONAR_TOKEN = credentials('sonarqube-token')
+      }
+      steps {
+        sh """
+          sonar-scanner \
+          -Dsonar.projectKey=auth-service \
+          -Dsonar.sources=. \
+          -Dsonar.host.url=$SONAR_HOST_URL \
+          -Dsonar.login=$SONAR_TOKEN
+        """
+      }
+    }
+
+    stage('Dependency Scan - OWASP') {
+      steps {
+        dependencyCheck additionalArguments: '--scan . --disableAssembly',
+                        odcInstallation: 'OWASP-DC'
+        dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+      }
+    }
+
+    stage('Build Application') {
+      steps {
+        sh 'npm run build || echo "No build step for backend"'
+      }
+    }
+
+    stage('Docker Build') {
+      steps {
+        script {
+          def commitHash = sh(
+            script: 'git rev-parse --short HEAD',
+            returnStdout: true
+          ).trim()
+
+          sh """
+            docker build -t $IMAGE_NAME:${commitHash} .
+            docker tag $IMAGE_NAME:${commitHash} $IMAGE_NAME:latest
+          """
+        }
+      }
+    }
+
+    stage('Image Scan - Trivy') {
+      steps {
+        sh """
+          trivy image --severity HIGH,CRITICAL --exit-code 1 $IMAGE_NAME:latest
+        """
+      }
+    }
+
+    stage('Push Image') {
+      when {
+        branch 'main'
+      }
+      environment {
+        DOCKER_CREDS = credentials('dockerhub-creds')
+      }
+      steps {
+        sh """
+          echo $DOCKER_CREDS_PSW | docker login -u $DOCKER_CREDS_USR --password-stdin
+          docker push $IMAGE_NAME:latest
+        """
+      }
+    }
+  }
+
+  post {
+    always {
+      cleanWs()
+    }
+  }
+}
