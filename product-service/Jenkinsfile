@@ -56,12 +56,14 @@ pipeline {
 
         stage('OWASP dependency check'){
             steps{
-                sh "${dcHome}/bin/dependency-check.sh \
-                --project product-service \
-                --scan . \
-                --format XML \
-                --out dependency-check-report \
-                --disableAssembly"
+                dir('product-service'){
+                    sh "${dcHome}/bin/dependency-check.sh \
+                    --project product-service \
+                    --scan . \
+                    --format XML \
+                    --out dependency-check-report \
+                    --disableAssembly"
+                }
             }
         }
 
