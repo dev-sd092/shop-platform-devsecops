@@ -1,0 +1,107 @@
+pipeline {
+    agent any
+
+    tools{
+        nodejs 'node-20'
+    }
+
+    environment{
+        sonarHome = tool 'sonar-scanner'
+        dcHome = tool 'OWASP-DC'
+        imageName = 'sanketdesai09/product-service'
+    }
+    
+    stages{
+        stage('cleaning workspace'){
+            steps{
+                cleanWs()
+            }
+        }
+
+        stage('code checkout'){
+            steps{
+                git branch: 'develop', credentialsId: 'github-pass', url: 'https://github.com/dev-sd092/shop-platform-devsecops.git'
+            }
+        } 
+
+        stage('install dependencies'){
+            steps{
+                dir('product-service'){
+                    sh 'npm ci'
+                }
+            }
+        }
+
+        stage('sonarqube analysis'){
+            steps{
+                dir('product-service'){
+                    withSonarQubeEnv('sonarqube'){
+                        sh "${sonarHome}/bin/sonar-scanner \
+                        -Dsonar.projectKey=product-service \
+                        -Dsonar.projectname=product-service \
+                        -Dsonar.sources=. \
+                        -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info"
+                    }
+                }
+            }
+        }
+
+        stage('quality gates'){
+            steps{
+                timeout(time: 1, unit:'HOURS'){
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+
+        stage('OWASP dependency check'){
+            steps{
+                sh "${dcHome}/bin/dependency-check.sh \
+                --project product-service \
+                --scan . \
+                --format XML \
+                --out dependency-check-report \
+                --disableAssembly"
+            }
+        }
+
+        stage('docker build'){
+            steps{
+                dir('product-service'){
+                    sh """
+                    commitHash=\$(git rev-parse --short HEAD)
+
+                    docker build -t ${imageName}:\$commitHash .
+                    docker tag ${imageName}:\$commitHash ${imageName}:latest
+                    """ 
+                }
+            }
+        }
+
+        stage('trivy image scan'){
+            steps{
+                sh "docker run --rm \
+                -v /var/run/docker.sock:/var/run/docker.sock \
+                -v \$HOME/.cache/trivy:/root/.cache/trivy \
+                aquasec/trivy:latest \
+                image --severity CRITICAL --exit-code 1 \
+                --format table \
+                ${imageName}:latest"
+            }
+        }
+
+        stage('image push to dockerhub'){
+            when{
+                branch 'main'
+            }
+
+            steps{
+                script {
+                    docker.withRegistry('https://index.docker.io', 'dockerhub-creds') {
+                        docker.image("${imageName}:latest").push()
+                    }
+                }
+            }
+        }
+    }
+}

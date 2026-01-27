@@ -64,7 +64,6 @@ pipeline {
       }
     }
 
-
     stage('Build Application') {
       steps {
         dir('auth-service') {
@@ -99,7 +98,9 @@ pipeline {
               -v /var/run/docker.sock:/var/run/docker.sock \
               -v \$HOME/.cache/trivy:/root/.cache/trivy \
               aquasec/trivy:latest \
-              image --severity CRITICAL --exit-code 1 $IMAGE_NAME:latest
+              image --severity CRITICAL --exit-code 1 \
+              --format table \
+              $IMAGE_NAME:latest
           """
         }
       }
