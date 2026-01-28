@@ -1,0 +1,116 @@
+pipeline{
+    agent any
+
+    tools{
+        nodejs 'node-20'
+    }
+
+    environment{
+        imageName = 'sanketdesai09/cart-service'
+        scannerHome = tool 'sonar-scanner'
+        dcHome = tool 'OWASP-DC'
+    }
+
+    stages{
+        stage('cleanup workspace'){
+            steps{
+                cleanWs()
+            }
+        }
+
+        stage('checkout code'){
+            steps{
+                checkout scm
+            }
+        }
+
+        stage('install dependencies'){
+            steps{
+                dir('cart-service'){
+                    sh 'npm ci'
+                }
+            }
+        }
+
+        stage('sonarqube analysis'){
+            steps{
+                dir('cart-service'){
+                    withSonarQubeEnv('sonarqube'){
+                        sh """
+                        ${scannerHome}/bin/sonar-scanner \
+                        -Dsonar.projectName=cart-service \
+                        -Dsonar.projectKey=cart-service \
+                        -Dsonar.sources=. 
+                        """
+                    }
+                }
+            }
+        }
+
+        stage('quality gates check'){
+            steps{
+                timeout(time: 10, unit:'MINUTES'){
+                    waitForQualityGate abortPipeline:true
+                }
+            }
+        }
+
+        stage('owasp dependency check'){
+            steps{
+                dir('cart-service'){
+                    sh """
+                    ${dcHome}/bin/dependency-chekc.sh \
+                    --project cart-service \
+                    --scan . \
+                    --format XML \
+                    --out dependency-check-report \
+                    --disableAssembly \
+                    --disableYarnAudit
+                    """
+                }
+            }
+        }
+
+        stage('docker build'){
+            steps{
+                dir('cart-service'){
+                    sh """
+                        commitHash=\$(git rev-parse --short HEAD)
+
+                        docker build -t ${imageName}:\$commitHash .
+                        docker tag ${imageName}:\$commitHash ${imageName}:latest
+                    """
+                }
+            }
+        }
+
+        stage('trivy image scan'){
+            steps{
+                dir('cart-service'){
+                    sh """
+                    docker run --rm \
+                    -v /var/run/docker.sock:/var/run/docker.sock \
+                    -v \$HOME/.cache/trivy:/root/.cache/trivy \
+                    aquasec/trivy:latest \
+                    image --severity CRITICAL --exit-code 1 \
+                    --format table \
+                    ${imageName}:latest
+                    """
+                }
+            }
+        }
+
+        stage('image push to dockerhub'){
+            when{
+                branch 'main'
+            }
+            steps{
+                script{
+                    docker.withRegistry('https://index.docker.io','dockerhub-creds'){
+                        docker.image("${imageName}:latest").push()
+                    }
+                }
+            }
+        }
+    }
+}

@@ -3,13 +3,12 @@ pipeline {
 
   tools {
     nodejs 'node-20'
-    'hudson.plugins.sonar.SonarRunnerInstallation' 'sonar-scanner'
   }
 
   environment {
-    REGISTRY = 'docker.io'
-    IMAGE_NAME = 'sanketdesai09/auth-service'
-    SONAR_HOST_URL = 'http://localhost:9000'
+    imageName = 'sanketdesai09/auth-service'
+    scannerHome = tool 'sonar-scanner'
+    dcHome = tool 'OWASP-DC'
   }
 
   stages {
@@ -31,15 +30,13 @@ pipeline {
     stage('Static Code Analysis - SonarQube') {
       steps {
         dir('auth-service') {
-          script {
-            def scannerHome = tool 'sonar-scanner'
-            
-            withSonarQubeEnv('sonarqube') {
-                sh "${scannerHome}/bin/sonar-scanner \
-                -Dsonar.projectKey=auth-service \
-                -Dsonar.sources=. \
-                -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info"
-            }
+          withSonarQubeEnv('sonarqube') {
+              sh """
+              ${scannerHome}/bin/sonar-scanner \
+              -Dsonar.projectName=auth-service \
+              -Dsonar.projectKey=auth-service \
+              -Dsonar.sources=.
+              """
           }
         }
       }
@@ -48,26 +45,15 @@ pipeline {
     stage('Dependency Scan - OWASP') {
       steps {
         dir('auth-service') {
-          script {
-            def dcHome = tool 'OWASP-DC'
-
-            sh """
-              ${dcHome}/bin/dependency-check.sh \
-                --project auth-service \
-                --scan . \
-                --format XML \
-                --out dependency-check-report \
-                --disableAssembly
-            """
-          }
-        }
-      }
-    }
-
-    stage('Build Application') {
-      steps {
-        dir('auth-service') {
-          sh 'npm run build  || echo "No build step for backend"'
+          sh """
+            ${dcHome}/bin/dependency-check.sh \
+              --project auth-service \
+              --scan . \
+              --format XML \
+              --out dependency-check-report \
+              --disableAssembly \
+              --disableYarnAudit
+          """
         }
       }
     }
@@ -75,34 +61,27 @@ pipeline {
     stage('Docker Build') {
       steps {
         dir('auth-service'){
-          script {
-            def commitHash = sh(
-              script: 'git rev-parse --short HEAD',
-              returnStdout: true
-            ).trim()
-
             sh """
-              docker build -t $IMAGE_NAME:${commitHash} .
-              docker tag $IMAGE_NAME:${commitHash} $IMAGE_NAME:latest
+              commitHash=\$(git rev-parse --short HEAD)
+
+              docker build -t ${imageName}:\$commitHash .
+              docker tag ${imageName}:\$commitHash ${imageName}:latest
             """
           }
         }
       }
-    }
 
     stage('Image Scan - Trivy') {
       steps {
-        script {
-          sh """
-            docker run --rm \
-              -v /var/run/docker.sock:/var/run/docker.sock \
-              -v \$HOME/.cache/trivy:/root/.cache/trivy \
-              aquasec/trivy:latest \
-              image --severity CRITICAL --exit-code 1 \
-              --format table \
-              $IMAGE_NAME:latest
-          """
-        }
+        sh """
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v \$HOME/.cache/trivy:/root/.cache/trivy \
+            aquasec/trivy:latest \
+            image --severity CRITICAL --exit-code 1 \
+            --format table \
+            $imageName:latest
+        """
       }
     }
 
@@ -110,21 +89,13 @@ pipeline {
       when {
         branch 'main'
       }
-      environment {
-        DOCKER_CREDS = credentials('dockerhub-creds')
+      steps{
+        script{
+          docker.withRegistry('https://index.docker.io','dockerhub-creds'){
+          docker.image("${imageName}:latest").push()
+          }
+        }
       }
-      steps {
-        sh """
-          echo $DOCKER_CREDS_PSW | docker login -u $DOCKER_CREDS_USR --password-stdin
-          docker push $IMAGE_NAME:latest
-        """
-      }
-    }
-  }
-
-  post {
-    always {
-      cleanWs()
     }
   }
 }

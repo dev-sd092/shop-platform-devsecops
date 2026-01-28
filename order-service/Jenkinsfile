@@ -1,18 +1,16 @@
-pipeline {
-    agent any
-
+pipeline{
     tools{
         nodejs 'node-20'
     }
 
     environment{
-        sonarHome = tool 'sonar-scanner'
+        imageName = 'sanketdesai09/order-service'
+        scannerHome = tool 'sonar-scanner'
         dcHome = tool 'OWASP-DC'
-        imageName = 'sanketdesai09/product-service'
     }
-    
+
     stages{
-        stage('cleaning workspace'){
+        stage('cleanup workspace'){
             steps{
                 cleanWs()
             }
@@ -22,83 +20,90 @@ pipeline {
             steps{
                 checkout scm
             }
-        } 
+        }
 
         stage('install dependencies'){
             steps{
-                dir('product-service'){
+                dir('order-service'){
                     sh 'npm ci'
                 }
             }
         }
 
-        stage('sonarqube analysis'){
+        stage('sonarQube scanner check'){
             steps{
-                dir('product-service'){
+                dir('order-service'){
                     withSonarQubeEnv('sonarqube'){
-                        sh "${sonarHome}/bin/sonar-scanner \
-                        -Dsonar.projectKey=product-service \
-                        -Dsonar.projectname=product-service \
-                        -Dsonar.sources=."
+                        sh """
+                        ${scannerHome}/bin/sonar-scanner \
+                        -Dsonar.projectName=order-service \
+                        -Dsonar.projectKey=order-service \
+                        -Dsonar.sources=. \
+                        """
                     }
                 }
             }
         }
 
-        stage('quality gates'){
+        stage('quality gate checks'){
             steps{
                 timeout(time: 10, unit:'MINUTES'){
-                    waitForQualityGate abortPipeline: true
+                    waitForQualityGate abortPipeline:true
                 }
             }
         }
 
-        stage('OWASP dependency check'){
+        stage('dependency check - OWASP'){
             steps{
-                dir('product-service'){
-                    sh "${dcHome}/bin/dependency-check.sh \
-                    --project product-service \
+                dir('order-service'){
+                    sh """
+                    ${dcHome}/bin/dependency-check.sh \
+                    --project order-service \
                     --scan . \
                     --format XML \
                     --out dependency-check-report \
-                    --disableAssembly"
+                    --disableAssembly \
+                    --disableYarnAudit
+                    """
                 }
             }
         }
 
         stage('docker build'){
             steps{
-                dir('product-service'){
+                dir('order-service'){
                     sh """
-                    commitHash=\$(git rev-parse --short HEAD)
+                    commitHash = \$(git rev-parse --short HEAD)
 
                     docker build -t ${imageName}:\$commitHash .
                     docker tag ${imageName}:\$commitHash ${imageName}:latest
-                    """ 
+                    """
                 }
             }
         }
 
         stage('trivy image scan'){
             steps{
-                sh "docker run --rm \
+                sh """
+                docker run --rm \
                 -v /var/run/docker.sock:/var/run/docker.sock \
                 -v \$HOME/.cache/trivy:/root/.cache/trivy \
                 aquasec/trivy:latest \
                 image --severity CRITICAL --exit-code 1 \
                 --format table \
-                ${imageName}:latest"
+                ${imageName}:latest
+                """
             }
         }
 
-        stage('image push to dockerhub'){
+        stage('image push'){
             when{
                 branch 'main'
             }
 
             steps{
-                script {
-                    docker.withRegistry('https://index.docker.io', 'dockerhub-creds') {
+                script{
+                    docker.withRegistry('https://index.docker.io','dockerhub-creds'){
                         docker.image("${imageName}:latest").push()
                     }
                 }
