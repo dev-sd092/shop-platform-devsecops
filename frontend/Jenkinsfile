@@ -1,0 +1,94 @@
+pipeline {
+    agent any
+
+    tools {
+        nodejs 'node-20'
+    }
+
+    environment {
+        sonarHome = tool 'sonar-scanner'
+        imageName = 'sanketdesai09/frontend'
+    }
+
+    stages {
+
+        stage('cleaning workspace') {
+            steps {
+                cleanWs()
+            }
+        }
+
+        stage('code checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('install dependencies') {
+            steps {
+                dir('frontend') {
+                    sh 'npm ci'
+                }
+            }
+        }
+
+        stage('frontend build') {
+            steps {
+                dir('frontend') {
+                    sh 'npm run build'
+                }
+            }
+        }
+
+        stage('sonarqube analysis') {
+            steps {
+                dir('frontend') {
+                    withSonarQubeEnv('sonarqube') {
+                        sh "${sonarHome}/bin/sonar-scanner \
+                        -Dsonar.projectKey=frontend \
+                        -Dsonar.projectName=frontend \
+                        -Dsonar.sources=."
+                    }
+                }
+            }
+        }
+
+        stage('docker build') {
+            steps {
+                dir('frontend') {
+                    sh """
+                    commitHash=\$(git rev-parse --short HEAD)
+
+                    docker build -t ${imageName}:\$commitHash .
+                    docker tag ${imageName}:\$commitHash ${imageName}:latest
+                    """
+                }
+            }
+        }
+
+        stage('trivy image scan') {
+            steps {
+                sh "docker run --rm \
+                -v /var/run/docker.sock:/var/run/docker.sock \
+                -v \$HOME/.cache/trivy:/root/.cache/trivy \
+                aquasec/trivy:latest \
+                image --severity CRITICAL --exit-code 1 \
+                --format table \
+                ${imageName}:latest"
+            }
+        }
+
+        stage('image push to dockerhub') {
+            when {
+                branch 'main'
+            }
+            steps {
+                script {
+                    docker.withRegistry('https://index.docker.io', 'dockerhub-creds') {
+                        docker.image("${imageName}:latest").push()
+                    }
+                }
+            }
+        }
+    }
+}
