@@ -59,7 +59,7 @@ pipeline{
             steps{
                 dir('cart-service'){
                     sh """
-                    ${dcHome}/bin/dependency-chekc.sh \
+                    ${dcHome}/bin/dependency-check.sh \
                     --project cart-service \
                     --scan . \
                     --format XML \

@@ -1,6 +1,6 @@
 pipeline{
     agent any 
-    
+
     tools{
         nodejs 'node-20'
     }
@@ -75,7 +75,7 @@ pipeline{
             steps{
                 dir('order-service'){
                     sh """
-                    commitHash = \$(git rev-parse --short HEAD)
+                    commitHash=\$(git rev-parse --short HEAD)
 
                     docker build -t ${imageName}:\$commitHash .
                     docker tag ${imageName}:\$commitHash ${imageName}:latest
