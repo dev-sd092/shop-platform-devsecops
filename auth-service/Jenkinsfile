@@ -9,6 +9,7 @@ pipeline {
     imageName = 'sanketdesai09/auth-service'
     scannerHome = tool 'sonar-scanner'
     dcHome = tool 'OWASP-DC'
+    DOCKER_CREDS = credentials('dockerhub-creds')
   }
 
   stages {
@@ -90,10 +91,10 @@ pipeline {
         branch 'main'
       }
       steps{
-        script{
-          docker.withRegistry('https://index.docker.io','dockerhub-creds'){
-          docker.image("${imageName}:latest").push()
-          }
+         sh """
+          echo "$DOCKER_CREDS_PSW" | docker login -u "$DOCKER_CREDS_USR" --password-stdin
+          docker push ${imageName}:latest
+        """
         }
       }
     }
