@@ -85,7 +85,7 @@ pipeline {
                 -v /var/run/docker.sock:/var/run/docker.sock \
                 -v \$HOME/.cache/trivy:/root/.cache/trivy \
                 aquasec/trivy:latest \
-                image --severity CRITICAL --exit-code 1 \
+                image --severity HIGH,CRITICAL --exit-code  \
                 --format table \
                 ${imageName}:latest"
             }
