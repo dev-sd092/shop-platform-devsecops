@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const cartApi = axios.create({
-  baseURL: 'http://localhost:6001',
+  baseURL: import.meta.env.VITE_CART_API,
 });
 
 cartApi.interceptors.request.use((config) => {

@@ -13,13 +13,13 @@ pipeline {
 
     stages {
 
-        stage('cleaning workspace') {
+        stage('clean workspace') {
             steps {
                 cleanWs()
             }
         }
 
-        stage('code checkout') {
+        stage('checkout code') {
             steps {
                 checkout scm
             }
@@ -33,34 +33,34 @@ pipeline {
             }
         }
 
-        stage('frontend build') {
-            steps {
-                dir('frontend') {
-                    sh 'npm run build'
-                }
-            }
-        }
-
         stage('sonarqube analysis') {
             steps {
                 dir('frontend') {
                     withSonarQubeEnv('sonarqube') {
-                        sh "${sonarHome}/bin/sonar-scanner \
+                        sh """
+                        ${sonarHome}/bin/sonar-scanner \
                         -Dsonar.projectKey=frontend \
                         -Dsonar.projectName=frontend \
-                        -Dsonar.sources=."
+                        -Dsonar.sources=.
+                        """
                     }
                 }
             }
         }
 
-        stage('docker build') {
+        stage('docker build (with env injection)') {
             steps {
                 dir('frontend') {
                     sh """
                     commitHash=\$(git rev-parse --short HEAD)
 
-                    docker build -t ${imageName}:\$commitHash .
+                    docker build \
+                      --build-arg VITE_AUTH_API=http://auth-service:4000 \
+                      --build-arg VITE_PRODUCT_API=http://product-service:5000 \
+                      --build-arg VITE_CART_API=http://cart-service:6001 \
+                      --build-arg VITE_ORDER_API=http://order-service:7000 \
+                      -t ${imageName}:\$commitHash .
+
                     docker tag ${imageName}:\$commitHash ${imageName}:latest
                     """
                 }
@@ -69,22 +69,23 @@ pipeline {
 
         stage('trivy image scan') {
             steps {
-                sh "docker run --rm \
-                -v /var/run/docker.sock:/var/run/docker.sock \
-                -v \$HOME/.cache/trivy:/root/.cache/trivy \
-                aquasec/trivy:latest \
-                image --severity HIGH,CRITICAL --exit-code 0 \
-                --format table \
-                ${imageName}:latest"
+                sh """
+                docker run --rm \
+                  -v /var/run/docker.sock:/var/run/docker.sock \
+                  -v \$HOME/.cache/trivy:/root/.cache/trivy \
+                  aquasec/trivy:latest \
+                  image --severity HIGH,CRITICAL --exit-code 0 \
+                  --format table \
+                  ${imageName}:latest
+                """
             }
         }
 
-        stage('image push to dockerhub') {
+        stage('push image to dockerhub') {
             when {
                 branch 'main'
             }
-            
-            steps{
+            steps {
                 sh """
                 echo "$DOCKER_CREDS_PSW" | docker login -u "$DOCKER_CREDS_USR" --password-stdin
                 docker push ${imageName}:latest
