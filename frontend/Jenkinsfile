@@ -48,23 +48,17 @@ pipeline {
             }
         }
 
-        stage('docker build (with env injection)') {
-            steps {
-                dir('frontend') {
-                    sh """
-                    commitHash=\$(git rev-parse --short HEAD)
-
-                    docker build \
-                      --build-arg VITE_AUTH_API=http://auth-service:4000 \
-                      --build-arg VITE_PRODUCT_API=http://product-service:5000 \
-                      --build-arg VITE_CART_API=http://cart-service:6001 \
-                      --build-arg VITE_ORDER_API=http://order-service:7000 \
-                      -t ${imageName}:\$commitHash .
-
-                    docker tag ${imageName}:\$commitHash ${imageName}:latest
-                    """
-                }
+        stage('docker build') {
+          steps {
+            dir('frontend') {
+              sh """
+              commitHash=\$(git rev-parse --short HEAD)
+        
+              docker build -t ${imageName}:\$commitHash .
+              docker tag ${imageName}:\$commitHash ${imageName}:latest
+              """
             }
+          }
         }
 
         stage('trivy image scan') {

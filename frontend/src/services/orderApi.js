@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const orderApi = axios.create({
-  baseURL: import.meta.env.VITE_ORDER_API,
+  baseURL: '/api/orders',
 });
 
 orderApi.interceptors.request.use((config) => {
