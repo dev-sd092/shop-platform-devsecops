@@ -135,8 +135,8 @@ pipeline {
                 git config user.name "jenkins"
                 git config user.email "jenkins@ci.local"
 
-                git add environments/dev/frontend.yaml
-                git commit -m "Update frontend image to ${IMAGE_TAG}"
+                git add environments/dev/product-service.yaml
+                git commit -m "Update product service image to ${IMAGE_TAG}"
                 git push origin main
                 """
             }
