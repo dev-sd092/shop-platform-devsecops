@@ -109,7 +109,7 @@ pipeline {
                 sh """
                 rm -rf shop-platform-gitops
 
-                git clone https://x-access-token:${GITHUB_TOKEN}@github.com/sanketdesai09/shop-platform-gitops.git
+                git clone https://x-access-token:${GITHUB_TOKEN}@github.com/dev-sd092/shop-platform-gitops.git
                 cd shop-platform-gitops
 
                 sed -i 's|image: .*frontend:.*|image: ${imageName}:${IMAGE_TAG}|g' environment/dev/frontend.yaml
