@@ -120,25 +120,25 @@ pipeline {
         }
 
         stage('Update GitOps manifests repo') {
-            when {
-                branch 'main'
-            }
+            when { branch 'main' }
             steps {
-                sh """
-                rm -rf shop-platform-gitops
+                withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB_TOKEN')]) {
+                    sh '''
+                    rm -rf shop-platform-gitops
 
-                git clone https://x-access-token:${GITHUB_TOKEN}@github.com/dev-sd092/shop-platform-gitops.git
-                cd shop-platform-gitops
+                    git clone https://x-access-token:$GITHUB_TOKEN@github.com/dev-sd092/shop-platform-gitops.git
+                    cd shop-platform-gitops
 
-                sed -i 's|image: .*frontend:.*|image: ${imageName}:${IMAGE_TAG}|g' environments/dev/product-service.yaml
+                    sed -i "s|image: .*product-service:.*|image: sanketdesai09/product-service:${IMAGE_TAG}|g" environments/dev/product-service.yaml
 
-                git config user.name "jenkins"
-                git config user.email "jenkins@ci.local"
+                    git config user.name "jenkins"
+                    git config user.email "jenkins@ci.local"
 
-                git add environments/dev/product-service.yaml
-                git commit -m "Update product service image to ${IMAGE_TAG}"
-                git push origin main
-                """
+                    git add environments/dev/product-service.yaml
+                    git commit -m "Update product service image to ${IMAGE_TAG}" || echo "No changes to commit"
+                    git push origin main
+                    '''
+                }
             }
         }
     }
