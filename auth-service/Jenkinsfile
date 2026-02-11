@@ -10,6 +10,7 @@ pipeline {
     scannerHome = tool 'sonar-scanner'
     dcHome = tool 'OWASP-DC'
     DOCKER_CREDS = credentials('dockerhub-creds')
+    GITHUB_TOKEN = credentials('github-token')
   }
 
   stages {
@@ -27,6 +28,18 @@ pipeline {
         }
       }
     }
+
+    stage('Set image tag') {
+            steps {
+                script {
+                    env.IMAGE_TAG = sh(
+                        script: "git rev-parse --short HEAD",
+                        returnStdout: true
+                    ).trim()
+                }
+                echo "Using image tag: ${IMAGE_TAG}"
+            }
+        }
       
     stage('Static Code Analysis - SonarQube') {
       steps {
@@ -86,16 +99,38 @@ pipeline {
       }
     }
 
-    stage('Push Image') {
+    stage('push image to dockerhub') {
       when {
         branch 'main'
       }
-      
-      steps{
-         sh """
-          echo "$DOCKER_CREDS_PSW" | docker login -u "$DOCKER_CREDS_USR" --password-stdin
-          docker push ${imageName}:latest
-          """
+      steps {
+        sh """
+        echo "$DOCKER_CREDS_PSW" | docker login -u "$DOCKER_CREDS_USR" --password-stdin
+        docker push ${imageName}:${IMAGE_TAG}
+        docker push ${imageName}:latest
+        """
+      }
+    }
+
+    stage('Update GitOps manifests repo') {
+      when {
+        branch 'main'
+      }
+      steps {
+        sh """
+        rm -rf shop-platform-gitops 
+        git clone https://x-access-token:${GITHUB_TOKEN}@github.com/dev-sd092/shop-platform-gitops.git
+
+        cd shop-platform-gitops 
+        sed -i 's|image: .*frontend:.*|image: ${imageName}:${IMAGE_TAG}|g' environments/dev/auth-service.yaml 
+
+        git config user.name "jenkins"
+        git config user.email "jenkins@ci.local"  
+
+        git add environments/dev/frontend.yaml
+        git commit -m "Update frontend image to ${IMAGE_TAG}"
+        git push origin main
+        """
       }
     }
   }
