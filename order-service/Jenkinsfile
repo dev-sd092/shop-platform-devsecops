@@ -135,7 +135,7 @@ pipeline{
                     git clone https://x-access-token:$GITHUB_TOKEN@github.com/dev-sd092/shop-platform-gitops.git
                     cd shop-platform-gitops
 
-                    sed -i "s|image: .*product-service:.*|image: sanketdesai09/order-service:${IMAGE_TAG}|g" environments/dev/order-service.yaml
+                    sed -i "s|image: .*order-service:.*|image: sanketdesai09/order-service:${IMAGE_TAG}|g" environments/dev/order-service.yaml
 
                     git config user.name "jenkins"
                     git config user.email "jenkins@ci.local"
