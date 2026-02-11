@@ -5,7 +5,7 @@ export const fetchCategories = () =>
 
 export const fetchProducts = (category) => {
   if (category) {
-    return productApi.get(`/products?category=${category}`);
+    return productApi.get(`/?category=${category}`);
   }
-  return productApi.get('/products');
+  return productApi.get('/');
 };

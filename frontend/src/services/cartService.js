@@ -1,6 +1,6 @@
 import cartApi from './cartApi';
 
-export const getCart = () => cartApi.get('/cart');
+export const getCart = () => cartApi.get('/');
 
 export const addToCart = (productId, quantity = 1) =>
   cartApi.post('/add', { productId, quantity });
