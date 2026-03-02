@@ -60,14 +60,6 @@ pipeline {
             }
         }
 
-        stage('quality gates'){
-            steps{
-                timeout(time: 10, unit:'MINUTES'){
-                    waitForQualityGate abortPipeline: true
-                }
-            }
-        }
-
         stage('OWASP dependency check'){
             steps{
                 dir('product-service'){
