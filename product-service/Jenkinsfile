@@ -122,7 +122,8 @@ pipeline {
                     cd shop-platform-gitops
 
                     sed -i "s|image: .*product-service:.*|image: sanketdesai09/product-service:${IMAGE_TAG}|g" environments/dev/product-service.yaml
-
+                    sed -i "s|image: .*product-service:.*|image: sanketdesai09/product-service:${IMAGE_TAG}|g" environments/dev/product-service-seed-job.yaml
+                    
                     git config user.name "jenkins"
                     git config user.email "jenkins@ci.local"
 
