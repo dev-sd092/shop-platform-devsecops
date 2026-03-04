@@ -21,11 +21,11 @@ async function seed() {
 
     // Categories
     const categories = await Category.insertMany([
-      { name: "Electronics" },
-      { name: "Clothing" },
-      { name: "Home & Kitchen" },
-      { name: "Fitness" },
-      { name: "Accessories" }
+      { name: "Electronics", slug: "electronics" },
+      { name: "Clothing", slug: "clothing" },
+      { name: "Home & Kitchen", slug: "home-kitchen" },
+      { name: "Fitness", slug: "fitness" },
+      { name: "Accessories", slug: "accessories" }
     ]);
 
     const [electronics, clothing, home, fitness, accessories] = categories;
