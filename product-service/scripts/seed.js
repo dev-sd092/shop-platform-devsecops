@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
-const Product = require('../models/Product');
-const Category = require('../models/Category');
+const Product = require('../src/models/Product');
+const Category = require('../src/models/Category');
 
 const MONGO_URI = process.env.MONGO_URI;
 
