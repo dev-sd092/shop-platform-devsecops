@@ -1,7 +1,8 @@
 import productApi from './productApi';
+import axios from 'axios';
 
 export const fetchCategories = () =>
-  productApi.get('/categories');
+  axios.get('/api/categories');
 
 export const fetchProducts = (category) => {
   if (category) {
