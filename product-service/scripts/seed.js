@@ -85,7 +85,7 @@ async function seed() {
         name: "Hoodie Sweatshirt",
         price: 1800,
         category: clothing._id,
-        image: "/images/products/hoodie-sweatshirt.webp"
+        image: "/images/products/hooded-sweatshirt.webp"
       },
       {
         name: "Casual Shirt",
