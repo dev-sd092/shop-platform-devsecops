@@ -22,7 +22,7 @@ const ProductCard = ({ product }) => {
     <div className={card.card}>
       <div className={card.imgWrapper}>
         <img
-          src={product.imageUrl}
+          src={product.image}
           alt={product.name}
           className={card.img}
         />

@@ -3,9 +3,9 @@ import { useState } from 'react';
 const CategoryFilter = ({ categories, onSelect }) => {
   const [activeCategory, setActiveCategory] = useState(null);
 
-  const handleSelect = (slug) => {
-    setActiveCategory(slug);
-    onSelect(slug);
+  const handleSelect = (id) => {
+    setActiveCategory(id);
+    onSelect(id);
   };
 
   return (
@@ -19,8 +19,8 @@ const CategoryFilter = ({ categories, onSelect }) => {
       {categories.map((cat) => (
         <button
           key={cat._id}
-          onClick={() => handleSelect(cat.slug)}
-          className={activeCategory === cat.slug ? 'active' : ''}
+          onClick={() => handleSelect(cat._id)}
+          className={activeCategory === cat._id ? 'active' : ''}
         >
           {cat.name}
         </button>
