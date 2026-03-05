@@ -13,6 +13,10 @@ async function seed() {
     await mongoose.connect(MONGO_URI);
     console.log("Connected to MongoDB");
 
+    await Product.deleteMany({});
+    await Category.deleteMany({});
+    console.log("Cleared old data to apply schema updates...");
+
     const existingProducts = await Product.countDocuments();
     if (existingProducts > 0) {
       console.log("Database already seeded. Skipping...");
