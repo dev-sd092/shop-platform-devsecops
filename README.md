@@ -25,6 +25,8 @@ This project demonstrates how modern DevOps teams build, secure, deploy, and mon
 
 # 🏗️ Architecture Overview
 
+<img width="1024" height="1536" alt="image" src="https://github.com/user-attachments/assets/d8df4bf8-bf00-4082-8855-4968e3230d5f" />
+
 The system consists of multiple Node.js microservices deployed on Kubernetes.
 
 User Browser ---> NGINX Ingress Controller ---> Frontend (React + Vite) ---> Backend Microservices
